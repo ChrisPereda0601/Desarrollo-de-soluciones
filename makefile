@@ -1,14 +1,20 @@
 CC = gcc
-CFLAGS = -Wall -Wextra
+CFLAGS = -Wall -Wextra -pedantic -std=c11
+LDFLAGS = -lpthread
+
+SRCS = chat2.c
+OBJS = $(SRCS:.c=.o)
 TARGET = chat2
+
+.PHONY: all clean
 
 all: $(TARGET)
 
-$(TARGET): chat2.o
-	$(CC) $(CFLAGS) -o $(TARGET) chat2.o
+$(TARGET): $(OBJS)
+    $(CC) $(CFLAGS) $(OBJS) -o $@ $(LDFLAGS)
 
-chat2.o: chat2.c
-	$(CC) $(CFLAGS) -c chat2.c
+%.o: %.c
+    $(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(TARGET) *.o
+    $(RM) $(OBJS) $(TARGET)
