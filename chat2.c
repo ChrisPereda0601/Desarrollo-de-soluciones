@@ -44,6 +44,7 @@ int main() {
 
     // Accept incoming connections
     addr_size = sizeof(client_addr);
+    memset(&client_addr, 0, sizeof(client_addr)); // Initialize client_addr
     client_sock = accept(server_sock, (struct sockaddr*)&client_addr, &addr_size);
     if (client_sock < 0) {
         error("[-]Accept error");
