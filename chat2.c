@@ -3,91 +3,85 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include <pthread.h>
 
-#define PORT 12345
+#define PORT 5566
+#define IP_ADDRESS "127.0.0.1"
 #define BUFFER_SIZE 1024
 
-// Estructura para pasar datos a los hilos
-typedef struct {
-    int socket;
-} ThreadArgs;
-
-// Función para recibir mensajes del otro usuario
-void *receive_message(void *arg) {
-    ThreadArgs *args = (ThreadArgs *)arg;
-    int socket = args->socket;
-    char buffer[BUFFER_SIZE];
-
-    while (1) {
-        int bytes_received = recv(socket, buffer, BUFFER_SIZE, 0);
-        if (bytes_received <= 0) {
-            printf("Conexión terminada.\n");
-            break;
-        }
-        buffer[bytes_received] = '\0';
-        printf("Mensaje recibido: %s\n", buffer);
-    }
-
-    close(socket);
-    pthread_exit(NULL);
+void error(const char *msg) {
+    perror(msg);
+    exit(1);
 }
 
-int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        printf("Uso: %s <dirección IP>\n", argv[0]);
-        return 1;
+int main() {
+    int server_sock, client_sock;
+    struct sockaddr_in server_addr, client_addr;
+    socklen_t addr_size;
+    char buffer[BUFFER_SIZE];
+
+    // Create socket
+    server_sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_sock < 0) {
+        error("[-]Socket error");
     }
+    printf("[+]TCP server socket created.\n");
 
-    char *ip_address = argv[1];
-    int server_socket, client_socket;
-    struct sockaddr_in server_addr;
-    pthread_t receive_thread;
-
-    // Crear socket TCP
-    server_socket = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_socket == -1) {
-        perror("Error al crear el socket");
-        exit(EXIT_FAILURE);
-    }
-
-    // Configurar la dirección del servidor
-    memset(&server_addr, 0, sizeof(server_addr));
+    // Initialize server address
+    memset(&server_addr, '\0', sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = inet_addr(ip_address);
     server_addr.sin_port = htons(PORT);
+    server_addr.sin_addr.s_addr = inet_addr(IP_ADDRESS);
 
-    // Conectar al servidor
-    if (connect(server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
-        perror("Error al conectar al servidor");
-        exit(EXIT_FAILURE);
+    // Bind the socket to the address
+    if (bind(server_sock, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+        error("[-]Bind error");
     }
+    printf("[+]Bind to the port number: %d\n", PORT);
 
-    printf("Conexión establecida con el servidor.\n");
+    // Listen for incoming connections
+    listen(server_sock, 5);
+    printf("Listening...\n");
 
-    // Iniciar el hilo para recibir mensajes
-    ThreadArgs receive_args = {server_socket};
-    if (pthread_create(&receive_thread, NULL, receive_message, (void *)&receive_args) != 0) {
-        perror("Error al crear el hilo para recibir mensajes");
-        exit(EXIT_FAILURE);
+    // Accept incoming connections
+    addr_size = sizeof(client_addr);
+    client_sock = accept(server_sock, (struct sockaddr*)&client_addr, &addr_size);
+    if (client_sock < 0) {
+        error("[-]Accept error");
     }
+    printf("[+]Client connected.\n");
 
-    // Ciclo para enviar mensajes
-    char message[BUFFER_SIZE];
+    // Communication loop
     while (1) {
-        printf("Ingrese un mensaje: ");
-        fgets(message, BUFFER_SIZE, stdin);
-        if (strcmp(message, "exit\n") == 0) {
+        // Receive message from client
+        bzero(buffer, BUFFER_SIZE);
+        if (recv(client_sock, buffer, BUFFER_SIZE, 0) < 0) {
+            error("[-]Receive error");
+        }
+        printf("Client: %s\n", buffer);
+
+        // If client sends "quit", close the connection
+        if (strcmp(buffer, "quit") == 0) {
+            printf("Client has disconnected.\n");
             break;
         }
-        send(server_socket, message, strlen(message), 0);
+
+        // Send message to client
+        printf("Server: ");
+        fgets(buffer, BUFFER_SIZE, stdin);
+        buffer[strcspn(buffer, "\n")] = '\0'; // Remove newline character
+        if (send(client_sock, buffer, strlen(buffer), 0) < 0) {
+            error("[-]Send error");
+        }
+
+        // If server sends "quit", close the connection
+        if (strcmp(buffer, "quit") == 0) {
+            printf("Closing connection.\n");
+            break;
+        }
     }
 
-    // Esperar a que el hilo de recepción termine
-    pthread_join(receive_thread, NULL);
-
-    // Cerrar el socket
-    close(server_socket);
-
+    // Close sockets
+    close(client_sock);
+    close(server_sock);
     return 0;
 }
