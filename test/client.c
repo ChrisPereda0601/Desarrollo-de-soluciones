@@ -18,6 +18,8 @@ int main(int argc, char *argv[]) {
     int socket_fd, num;
     char buffer[MAXSIZE];
 
+    pid_t p;
+
     if (argc != 2) {
         fprintf(stderr, "Usage: client hostname\n");
         exit(1);
@@ -46,19 +48,37 @@ int main(int argc, char *argv[]) {
     // Enter loop to continuously check for messages from server
     while (1) {
         // Check for incoming messages from server
-        num = recv(socket_fd, buffer, sizeof(buffer), MSG_DONTWAIT);
-        if (num > 0) {
-            buffer[num] = '\0';
-            printf("Client: Message Received From Server - %s\n", buffer);
-        }
 
-        // Handle user input
-        printf("Client: Enter Data for Server:\n");
-        fgets(buffer, MAXSIZE - 1, stdin);
-        if ((send(socket_fd, buffer, strlen(buffer), 0)) == -1) {
-            fprintf(stderr, "Failure Sending Message\n");
-            close(socket_fd);
-            exit(1);
+        ///printf("Server got connection from client %s\n", inet_ntoa(dest.sin_addr));
+
+        p = fork();
+
+        if(p<0){
+             printf("Ana maria viene de malas\n");
+            return 1;
+        }else if(p==0){
+
+            while(1){
+                num = recv(socket_fd, buffer, sizeof(buffer), MSG_DONTWAIT);
+                if (num > 0) {
+                    buffer[num] = '\0';
+                    printf("Client: Message Received From Server - %s\n", buffer);
+                }
+
+            }
+        }else{
+            printf("Va a entrar al padre\n");
+            while (1) {
+                  // Handle user input
+            printf("Client: Enter Data for Server:\n");
+            fgets(buffer, MAXSIZE - 1, stdin);
+            if ((send(socket_fd, buffer, strlen(buffer), 0)) == -1) {
+                fprintf(stderr, "Failure Sending Message\n");
+                close(socket_fd);
+                exit(1);
+            }
+
+                }
         }
     }
 
