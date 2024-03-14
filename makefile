@@ -1,13 +1,14 @@
-CC=gcc
-CFLAGS=-Wall
+CC = gcc
+CFLAGS = -Wall -Wextra -std=c99 -pedantic
+LDFLAGS = -lreadline
 
-all: chat2
+all: server client
 
-chat2: chat2.o
-	$(CC) $(CFLAGS) -o chat2 chat2.o
+server: server.c
+	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 
-chat2.o: chat2.c
-	$(CC) $(CFLAGS) -c chat2.c
+client: client.c
+	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 
 clean:
-	rm -f *.o chat2
+	rm -f server client
