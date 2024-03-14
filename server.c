@@ -8,8 +8,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <readline/readline.h>
-#include <readline/history.h>
 
 #define PORT 5000
 #define BACKLOG 10
@@ -62,25 +60,23 @@ int main() {
         // Enter loop to continuously check for messages from client
         while (1) {
             // Check for incoming messages from client
-            num = recv(client_fd, buffer, sizeof(buffer), MSG_DONTWAIT);
-            if (num > 0) {
-                buffer[num] = '\0';
-                printf("Server: Msg Received %s\n", buffer);
-            }
-
-            // Handle server-side input
-            char *input = readline("Server: Enter Data for Client: ");
-            if (!input) {
-                // Handle error or EOF
+            num = recv(client_fd, buffer, sizeof(buffer), 0);
+            if (num <= 0) {
+                // Error or connection closed, break out of the loop
                 break;
             }
-            if ((send(client_fd, input, strlen(input), 0)) == -1) {
+
+            buffer[num] = '\0';
+            printf("Server: Msg Received %s\n", buffer);
+
+            // Handle server-side input
+            printf("Server: Enter Data for Client:\n");
+            fgets(buffer, MAXSIZE - 1, stdin);
+            if ((send(client_fd, buffer, strlen(buffer), 0)) == -1) {
                 fprintf(stderr, "Failure Sending Message\n");
-                free(input);
                 close(client_fd);
                 exit(1);
             }
-            free(input);
         }
 
         // Close Connection Socket

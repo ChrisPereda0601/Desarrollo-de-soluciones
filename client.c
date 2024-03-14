@@ -8,8 +8,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <readline/readline.h>
-#include <readline/history.h>
 
 #define PORT 5000
 #define MAXSIZE 1024
@@ -48,25 +46,23 @@ int main(int argc, char *argv[]) {
     // Enter loop to continuously check for messages from server
     while (1) {
         // Check for incoming messages from server
-        num = recv(socket_fd, buffer, sizeof(buffer), MSG_DONTWAIT);
-        if (num > 0) {
-            buffer[num] = '\0';
-            printf("Client: Message Received From Server - %s\n", buffer);
-        }
-
-        // Handle user input
-        char *input = readline("Client: Enter Data for Server: ");
-        if (!input) {
-            // Handle error or EOF
+        num = recv(socket_fd, buffer, sizeof(buffer), 0);
+        if (num <= 0) {
+            // Error or connection closed, break out of the loop
             break;
         }
-        if (send(socket_fd, input, strlen(input), 0) == -1) {
+
+        buffer[num] = '\0';
+        printf("Client: Message Received From Server - %s\n", buffer);
+
+        // Handle user input
+        printf("Client: Enter Data for Server:\n");
+        fgets(buffer, MAXSIZE - 1, stdin);
+        if ((send(socket_fd, buffer, strlen(buffer), 0)) == -1) {
             fprintf(stderr, "Failure Sending Message\n");
-            free(input);
             close(socket_fd);
             exit(1);
         }
-        free(input);
     }
 
     close(socket_fd);
