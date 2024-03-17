@@ -5,8 +5,8 @@ CPP ?= g++
 APP_NAME_CAPTURE = audio_botones
 OBJFILES_CAPTURE = audio_botones.o
 
-APP_NAME_PLAY = audio_playback
-OBJFILES_PLAY = audio_playback.o
+APP_NAME_PLAY = audio_final
+OBJFILES_PLAY = audio_final.o
 
 
 APP_NAME_VOL = volume_control

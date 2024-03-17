@@ -6,16 +6,15 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <alsa/asoundlib.h>
+#include <signal.h>
 
 #define NUM_BUTTONS 8 // Change this to the number of buttons connected
 #define CHANNELS    2
 #define FRAMES      768  
 
-int recording = 0; // flag to indicate whether recording is in progress
+int recording_pid = -1; // PID of the recording process
+int is_recording = 0;   // flag to indicate whether recording is in progress
 snd_pcm_t *handle;
-
-// Get the process ID of the current process
-
 
 void record_audio(char *filename) {
     FILE *rec_file = fopen(filename, "w");
@@ -64,7 +63,7 @@ void record_audio(char *filename) {
 
     uint32_t *buffer = (uint32_t *)malloc(CHANNELS * FRAMES * sizeof(uint32_t));
 
-    while (recording) {
+    while (is_recording) {
         snd_pcm_sframes_t frames = snd_pcm_readi(handle, buffer, FRAMES);
         if (frames < 0) {
             frames = snd_pcm_recover(handle, frames, 0);
@@ -83,55 +82,50 @@ void record_audio(char *filename) {
     exit(EXIT_SUCCESS);
 }
 
+void stop_recording() {
+    if (recording_pid != -1) {
+        kill(recording_pid, SIGINT);
+        recording_pid = -1;
+    }
+}
+
 void listen_buttons(int fd) {
     struct input_event ev;
-    pid_t pReproducir;
-
 
     while (1) {
         if (read(fd, &ev, sizeof(struct input_event)) == -1) {
             perror("Error reading input event");
             exit(EXIT_FAILURE);
         }
-        pid_t pGrabar;
 
         if (ev.type == EV_KEY) {
-            if (ev.code == 412) { // Botón para grabar
-                if (ev.value == 1) { // Botón presionado
-                    printf("Button 412 has been pressed\n");
-                    if (!recording) {
-                        recording = 1;
-                        pGrabar = fork();
-                        if (pGrabar == 0) { // Proceso hijo
-                            record_audio("test.wav");
-                        } else if (pGrabar < 0) {
-                            perror("Error forking process");
-                            exit(EXIT_FAILURE);
-                        }
-                    }
-                } else if (ev.value == 0) { // Botón liberado
-                    printf("Button 412 has been released\n");
-                    if (recording) {
-                        printf("Recording stopped\n");
-                        recording = 0;
-                        kill(pGrabar, SIGINT);
+            int button_number = ev.code - KEY_RESERVED + 1;
+            if (ev.value == 1) { // Button pressed
+                printf("Button %d has been pressed\n", button_number);
+                if (ev.code == 412 && !is_recording) { // Start recording when button 412 is pressed
+                    is_recording = 1;
+                    pid_t pid = fork();
+                    if (pid == 0) { // Child process
+                        record_audio("test.wav");
+                    } else if (pid < 0) {
+                        perror("Error forking process");
+                        exit(EXIT_FAILURE);
+                    } else {
+                        recording_pid = pid;
                     }
                 }
-            } else if (ev.code == 207 && ev.value == 1) { // Botón para reproducir
-                printf("Button 207 has been pressed\n");
-                printf("Reproducing audio\n");
-                system("aplay -Dplughw:1,0 -r 48000 -c 2 test.wav -f S32_LE");  
+            } else if (ev.value == 0) { // Button released
+                printf("Button %d has been released\n", button_number);
+                if (ev.code == 412 && is_recording) { // Stop recording when button 412 is unpressed
+                    is_recording = 0;
+                    stop_recording();
+                }
             }
         }
     }
 }
 
-
 int main() {
-    pid_t parent_pid = getpid();
-
-// Print the process ID
-    printf("Process ID: %d\n", parent_pid);
     int fd = open("/dev/input/event0", O_RDONLY);
     if (fd == -1) {
         perror("Error opening input device");
@@ -139,12 +133,6 @@ int main() {
     }
 
     listen_buttons(fd);
-
-
-    //listen_buttons(fd, child_pid);
-    
-
-    //listen_buttons(fd,padre);
 
     close(fd);
 
