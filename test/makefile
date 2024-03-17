@@ -1,27 +1,32 @@
-CC = gcc
-CFLAGS = -Wall -Wextra
-LDFLAGS =
+CC ?= gcc
+CXX ?= g++
+CPP ?= g++
 
-CLIENT_SRC = client.c
-CLIENT_OBJ = $(CLIENT_SRC:.c=.o)
-CLIENT_BIN = client
+APP_NAME_CAPTURE = client
+OBJFILES_CAPTURE = client.o
 
-SERVER_SRC = server.c
-SERVER_OBJ = $(SERVER_SRC:.c=.o)
-SERVER_BIN = server
+APP_NAME_PLAY = server
+OBJFILES_PLAY = server.o
 
-.PHONY: all clean
 
-all: $(CLIENT_BIN) $(SERVER_BIN)
+LIB_DIRS = .
+LIBS = -lasound
 
-$(CLIENT_BIN): $(CLIENT_OBJ)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+all: $(APP_NAME_CAPTURE) $(APP_NAME_PLAY)  $(APP_NAME_VOL)
 
-$(SERVER_BIN): $(SERVER_OBJ)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+$(APP_NAME_CAPTURE): $(OBJFILES_CAPTURE)
+	$(CC) $^ -o $@ -L$(LIB_DIRS) $(LIBS)
+
+$(APP_NAME_PLAY): $(OBJFILES_PLAY)
+	$(CC) $^ -o $@ -L$(LIB_DIRS) $(LIBS)
+
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) -c $^ -o $@
 
 clean:
-	rm -f $(CLIENT_OBJ) $(CLIENT_BIN) $(SERVER_OBJ) $(SERVER_BIN)
+	rm *.o  $(APP_NAME_CAPTURE) $(APP_NAME_PLAY)
+
+fresh:
+	make clean
+	make all 
