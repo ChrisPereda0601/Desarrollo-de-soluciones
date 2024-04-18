@@ -1,72 +1,104 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
-#include <termios.h>
+#include <fcntl.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
+#include <linux/input.h>
+#include <cstdlib>
+#include <sys/wait.h>
+#include <alsa/asoundlib.h>
+#include <fstream>
+#include <string>
 
 #define WIDTH   640
 #define HEIGHT  480
 
 using namespace cv;
 
-// Función para configurar la terminal en modo no bloqueante
-void setStdinEcho(bool enable = true) {
-    struct termios tty;
-    tcgetattr(STDIN_FILENO, &tty);
-    if (!enable) {
-        tty.c_lflag &= ~ICANON;
-        tty.c_lflag &= ~ECHO;
-        tty.c_cc[VMIN] = 1;
-        tty.c_cc[VTIME] = 0;
-    } else {
-        tty.c_lflag |= ICANON;
-        tty.c_lflag |= ECHO;
-    }
-    tcsetattr(STDIN_FILENO, TCSANOW, &tty);
-}
+constexpr int NUM_BUTTONS = 8;
 
 int main() {
-    setStdinEcho(false);  // Desactivar eco y modo canónico
+    const char* device = "/dev/input/event1"; // Cambia esto al dispositivo correcto
+    int fd = open(device, O_RDONLY);
+    if (fd == -1) {
+        perror("Error opening device");
+        exit(EXIT_FAILURE);
+    }
 
-    cv::Mat image;
-    VideoCapture camera(0);
-    // if (!camera.isOpened()) {
-    //     std::cerr << "Error opening camera." << std::endl;
-    //     return -1;
-    // }
+    cv::Mat imagen;
+    VideoCapture camara(0);
 
-    camera.set(cv::CAP_PROP_FRAME_WIDTH, WIDTH);
-    camera.set(cv::CAP_PROP_FRAME_HEIGHT, HEIGHT);
+    camara.set(cv::CAP_PROP_FRAME_WIDTH, WIDTH);
+    camara.set(cv::CAP_PROP_FRAME_HEIGHT, HEIGHT);
 
-    namedWindow("en vivo", WINDOW_AUTOSIZE);
+    input_event ev;
+    bool takePhoto = false;
+
+    if (!camara.isOpened()) {
+        std::cerr << "Error opening camera." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    namedWindow("Imagen", WINDOW_AUTOSIZE);
 
     while (true) {
-        camera >> image;
-        if (image.empty()) {
-            std::cerr << "No frame captured from the camera." << std::endl;
+        // Check for button press
+        
+
+        if (read(fd, &ev, sizeof(input_event)) != -1) {
+            if (ev.type == EV_KEY && ev.code == 412) {
+                if (ev.value == 1) { // Botón presionado
+                    std::cout << "Button 412 has been pressed, taking photo...\n";
+                    takePhoto = true;
+                }
+            }
+        }
+
+        // Capture and display image
+        camara >> imagen;
+        if (imagen.empty()) {
+            std::cerr << "No captured frame -- Break!" << std::endl;
             break;
         }
-    
-        cv::imshow("Live Feed", image);
+        imshow("Imagen", imagen);
 
-        // if (waitKey(1) == 'c') {
-        //     std::cout << "Photo saved as 'captured_photo.jpg'." << std::endl;
-        //     imwrite("captured_photo.jpg", image);
-        //     std::cout << "Photo saved as 'captured_photo.jpg'." << std::endl;
-        // }
+        if (takePhoto) {
+            std::cout << "Photo saved as 'captured_photo.jpg'." << std::endl;
+            imwrite("captured_photo.jpg", imagen);
+            takePhoto = false; // Reset flag
 
-        // Leer de stdin en modo no bloqueante
-        char ch;
-        if (read(STDIN_FILENO, &ch, 1) > 0) {
-            if (ch == 'q') {
-                //break;
-                std::cout << "Photo saved as 'captured_photo.jpg'." << std::endl;
-                imwrite("captured_photo.jpg", image);
+            usleep(5000000);
+
+            system("./tflite_classification_example mobilenet_v1_1.0_224_quant.tflite labels_mobilenet_quant_v1_224.txt captured_photo.jpg");
+
+            usleep(2000000);
+            
+            std::ifstream inFile("salida.txt");
+            if (!inFile.is_open()) {
+                std::cerr << "Error al abrir el archivo para lectura." << std::endl;
+                return 1; // Retorna 1 para indicar error
             }
+
+            std::string firstLine;
+            if (std::getline(inFile, firstLine)) { // Lee la primera línea del archivo
+                std::cout << firstLine << std::endl;
+            } else {
+                std::cout << "El archivo está vacío o no se pudo leer la primera línea." << std::endl;
+            }
+
+            inFile.close();
+        }
+
+        if ((char) waitKey(10) == 'c') {
+            break; // Exit loop on 'c' key press
         }
     }
 
-    setStdinEcho(true);  // Restaurar configuración de la terminal
-    camera.release();
+
+
+    camara.release();
     destroyAllWindows();
+    close(fd);
+
     return 0;
 }
