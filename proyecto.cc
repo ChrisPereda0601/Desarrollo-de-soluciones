@@ -9,6 +9,7 @@
 #include <alsa/asoundlib.h>
 #include <fstream>
 #include <string>
+#include <sstream>
 
 #define WIDTH   640
 #define HEIGHT  480
@@ -79,12 +80,25 @@ int main() {
                 return 1; // Retorna 1 para indicar error
             }
 
-            std::string firstLine;
+            std::string firstLine, firstWord;
+            
             if (std::getline(inFile, firstLine)) { // Lee la primera línea del archivo
-                std::cout << firstLine << std::endl;
+                std::istringstream iss(firstLine);
+                iss >> firstWord;  // Extrae solo la primera palabra hasta el primer espacio
+                
+                // Construye el comando usando std::ostringstream
+                std::ostringstream cmd;
+                cmd << "aplay -Dplughw:1,0 -r 48000 -c 2 " << firstWord << ".wav -f S32_LE";
+                
+                std::cout << "Comando a ejecutar: " << cmd.str() << std::endl;
+
+                system(cmd.str().c_str());
+                //system("aplay -Dplughw:1,0 -r 48000 -c 2 client.wav -f S32_LE")
             } else {
                 std::cout << "El archivo está vacío o no se pudo leer la primera línea." << std::endl;
             }
+
+
 
             inFile.close();
         }
