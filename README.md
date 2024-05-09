@@ -1,7 +1,7 @@
 # Desarrollo-de-soluciones
 Repositorio creado para Laboratorio de desarrollo de soluciones tecnológicas
 
-# Proyecto  Reconocmiento de Imagenes con dicatdo de Voz
+# Proyecto  Reconocmiento de Imágenes con dicatdo de Voz
 ![image](https://github.com/ChrisPereda0601/Desarrollo-de-soluciones/assets/98288513/551894bd-ec99-4cf4-81c4-6841575a5894)
 
 
