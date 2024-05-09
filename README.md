@@ -1,7 +1,9 @@
 # Desarrollo-de-soluciones
 Repositorio creado para Laboratorio de desarrollo de soluciones tecnológicas
 
-# Proyeto  
+# Proyecto  Reconocmiento de Imagenes con dicatdo de Voz
+![image](https://github.com/ChrisPereda0601/Desarrollo-de-soluciones/assets/98288513/551894bd-ec99-4cf4-81c4-6841575a5894)
+
 
 ## Como usar el proyecto
 ### 1. Pasar a tu tarjeta pico todo a una misma carpeta o directorio los archivos de "proyecto", "/classification/labels_mobilenet_quant_v1_224.txt", "/classification/mobilenet_v1_1.0_224_quant.tflite","/classification/tflite_classification_example" (Agregar SIN carpeta de classification, todos los archivos en el directorio)
